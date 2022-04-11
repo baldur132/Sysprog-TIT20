@@ -1,0 +1,83 @@
+;-----------------------------------------------------------------------------
+; extern short list_add(struct timeval *tv);
+;-----------------------------------------------------------------------------
+        global list_add:function
+list_add:
+        push    rbp
+        mov     rbp,rsp
+
+	; save entry in list
+	mov	rcx,[position]			; get the postitional offset of the list
+	mov	r8,QWORD[rsi]			; get seconds value
+	mov	r9,QWORD[rsi + 8]		; get useconds value
+	mov	[list + rcx],r8		; move seconds into the first part
+	mov	[list + rcx + 8],r9		; move useconds into the second part
+
+	; check if list is sorted
+	cmp	rcx,0
+	je	.list_add_end			; skip checking if entry is first entry
+	cmp	[rcx - 16],r8			; compare seconds
+	jge	.set_list_unsorted		; last entry is greater than current entry -> not sorted
+	cmp	[rcx - 8],r9			; compare useconds
+	jge	.set_list_unsorted		; last useconds are greater than current -> not sorted
+	
+	mov	rdx,1				; list is sorted
+	mov	[list_sorted],rdx
+	jmp	.list_add_end
+
+.set_list_unsorted:
+	mov	rdx,0				; list is not sorted
+	mov	[list_sorted],rdx
+
+.list_add_end:
+	add	rcx,16				; increment to next list entry
+	mov	[position],rcx			; save position
+
+        mov     rsp,rbp
+        pop     rbp
+        ret
+        
+        
+
+
+
+;-----------------------------------------------------------------------------
+; extern short list_find(struct timeval *tv);
+;-----------------------------------------------------------------------------
+	global list_find:function
+list_find:
+	push    rbp
+	mov     rbp,rsp
+
+	; general search (linear)
+	mov	rcx, 0			; init counter
+	movzx	rdx,WORD[size]		; get list size
+	
+	mov	r8,[rdi]		; get target seconds
+	mov	r9,[rdi + 8]		; get target useconds
+
+.loop:
+	cmp	rdx,rcx			; while loop test condition
+	jb	.list_find_end		; exit loop if counter is > last index
+
+	; test timeval equality
+	mov	rax,rcx
+	mov	r10,16
+	mul	r10
+	cmp	r8,[list + rax]		; compare seconds
+	jne	.loop_end
+;	cmp	r9,[list + rax + 8]	; compare useconds
+;	jne	.loop_end
+
+	; both seconds and useconds equal, match found
+	mov	rax,rcx			; return 0-counted position
+	jmp	.list_find_end
+
+.loop_end:
+	inc	rcx
+	jmp	.loop
+
+.list_find_end:
+	mov     rsp,rbp
+	pop     rbp
+	ret
