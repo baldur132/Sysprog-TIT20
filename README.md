@@ -1,21 +1,22 @@
 # Programmentwurf TIT20 2022
-Es handelt sich um ein Programm, welches eine Liste von Zeitstemepel einliest und den Zeitunterschied zwischen Zeitstempel ausgibt.
+This program takes a list of timestamps, calculates the differences in time between the given timestamps, and outputs the result.
 
 ## usage
 Normal Usage:
 ```
-cd pe2022
+cd pe2022/
 make
 cat eingabe.txt | ./timediff
 ```
 
 List Unit Test:
 ```
-cd pe2022
+cd pe2022/
 make
 ./list_test
 ```
 
 ### dependencies
  - nasm
+ - gcc
  - make
