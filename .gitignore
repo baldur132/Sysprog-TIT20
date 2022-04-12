@@ -11,3 +11,8 @@ CTestTestfile.cmake
 _deps
 
 pe2022/dump.txt
+pe2022/*.o
+pe2022/*.lst
+pe2022/list_test
+pe2022/timediff
+pe2022/eingabe.txt
