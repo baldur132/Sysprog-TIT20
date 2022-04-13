@@ -77,7 +77,7 @@ list_size:
 	push	rbp
 	mov     rbp,rsp
 
-	mov		ax,[size]
+	mov	ax,[size]
 
 	mov     rsp,rbp
 	pop     rbp
@@ -92,7 +92,7 @@ list_is_sorted:
 	push    rbp
 	mov     rbp,rsp
 
-	mov		al,[list_sorted]
+	mov	al,[list_sorted]
 
 	mov     rsp,rbp
 	pop     rbp
@@ -118,9 +118,9 @@ list_add:
 	cmp	rcx, 0
 	je	.list_add_end		; skip checking if this is first entry
 	cmp	[list + rcx - 16],r8	; compare previous sec to current sec
-	jg	.set_list_unsorted	; last sec > current sec -> not sorted
+	ja	.set_list_unsorted	; last sec > current sec -> not sorted
 	cmp	[list + rcx - 8],r9	; compare previous usec to cur usec
-	jg	.set_list_unsorted	; last usec > cur usec -> not sorted
+	ja	.set_list_unsorted	; last usec > cur usec -> not sorted
 	
 	mov	rdx,1			; list is sorted
 	mov	[list_sorted],rdx
