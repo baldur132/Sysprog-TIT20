@@ -44,10 +44,9 @@ SECTION .data
 sec_i:		db	0	; number of digits in seconds
 usec_i:		db	0	; tracks byte offset in usec
 usec_flag:	db	0	; decides whether to write into sec or usec
-errmsg_values:	db	"Fehler- Bitte ueberpruefen Sie die Eingabewerte", 0xA
-errmsg_empty:	db	"Fehler- Keine Eingabewerte Vorhanden", 0xA
-msg:		db	"read", 0xA
-msg_len:	dd	0	; number of characters to print
+emsg_values:	db	"Fehler Bitte ueberpruefen Sie die Eingabewerte", 0xA
+emsg_empty:	db	"Keine Eingabewerte vorhanden", 0xA
+emsg_unsorted:	db	"Eingabewerte sind nicht sortiert", 0xA
 
 timestamp:	times	28	db	0
 timestring:	times	22	db	0
@@ -153,10 +152,6 @@ write_data_to_list:
 	;                 5*100000 + 2*10000 + 3*1000 + 4*100 + 8*10 + 1*1
 	; => seconds[i] * 10^(sec_i - i)
 
-	push	rax
-	SYSCALL_4 SYS_WRITE, FD_STDOUT, msg, 5
-	pop	rax
-
 	push	rax			; save rax as we clobber it later
 	push	r8
 
@@ -173,7 +168,7 @@ write_data_to_list:
 	mul	rdx			; calc seconds[i] * 10^sec_i
 	add	r10,rax			; add result to total
 	inc	r9
-	test	rcx,rcx	
+	test	rcx,rcx
 	jnz	.loop_sec		; allow 0th iteration
 
 	mov	rcx,6			; set iterator for usec
@@ -195,7 +190,12 @@ write_data_to_list:
 	mov	[timeval],r10		; write seconds to mem
 	mov	[timeval + 8],r11	; write useconds to mem
 	mov	rdi,timeval		; write pointer to param 1
-	call	list_add		; clobbers 
+	call	list_add		; clobbers
+
+	;----- check that the list is sorted -----
+;	call	list_is_sorted
+;	test	rax,rax
+;	jz	error_unsorted
 
 	; clear buffer iterators
 	mov	BYTE[sec_i],0
@@ -204,7 +204,6 @@ write_data_to_list:
 	pop	r8
 	pop	rax
 	ret
-
 
 ipown:
 	; This power function is naive but it works.
@@ -269,14 +268,19 @@ exit:
 	; call system exit and return to operating system / shell
 	SYSCALL_2 SYS_EXIT, 0
 
+error_unsorted:
+	; write error message
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, emsg_unsorted, 33
+	jmp	exit_failure
+
 error_empty:
 	; write error message
-	SYSCALL_4 SYS_WRITE, FD_STDOUT, errmsg_empty, 37
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, emsg_empty, 37
 	jmp	exit_failure
 
 error_values:
 	; write error message
-	SYSCALL_4 SYS_WRITE, FD_STDOUT, errmsg_values, 48
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, emsg_values, 48
 
 exit_failure:
 	; call system failure
