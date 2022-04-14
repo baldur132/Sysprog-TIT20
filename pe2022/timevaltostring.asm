@@ -1,5 +1,5 @@
 ;-----------------------------------------------------------------------------
-; uint_to_ascii64.asm
+; timevaltostring.asm
 ;-----------------------------------------------------------------------------
 ;
 ; DHBW Ravensburg - Campus Friedrichshafen
@@ -11,8 +11,9 @@
 ; Architecture:  x86-64
 ; Language:      NASM Assembly Language
 ;
-; Author:        Ralf Reutemann
-; Created:       2021-12-02
+; Author:        Baldur Siegel
+;                Jonas Straub
+; Created:       2022-4
 ;
 ; PURPOSE:    Convert timeval into string
 ;
@@ -26,7 +27,6 @@
 ; CLOBBERS:   RAX, RDX, R8, R9
 ;
 ;----------------------------------------------------------------------------
-
 
 ;-----------------------------------------------------------------------------
 ; Section TEXT
@@ -131,7 +131,6 @@ usecondstostring:
         ret
 
 func_end:
-
         pop   rbx
         pop   rcx
         ret

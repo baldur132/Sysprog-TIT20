@@ -78,7 +78,7 @@ list_size:
 	push	rbp
 	mov     rbp,rsp
 
-	mov	ax,[size]
+	movzx	rax,WORD[size]
 
 	mov     rsp,rbp
 	pop     rbp
@@ -93,7 +93,7 @@ list_is_sorted:
 	push    rbp
 	mov     rbp,rsp
 
-	mov	al,[list_sorted]
+	mov	al,BYTE[list_sorted]
 
 	mov     rsp,rbp
 	pop     rbp
@@ -124,20 +124,20 @@ list_add:
 	ja	.set_list_unsorted	; last usec > cur usec -> not sorted
 	
 	mov	rdx,1			; list is sorted
-	mov	[list_sorted],rdx
+	mov	BYTE[list_sorted],dl
 	jmp	.list_add_end
 
 .set_list_unsorted:
 	mov	rdx,0			; list is not sorted
-	mov	[list_sorted],rdx
+	mov	BYTE[list_sorted],dl
 
 .list_add_end:
 	add	rcx,16			; increment to next list entry
 	mov	[position],rcx		; save position
-	mov	cx,[size]
-	movzx	rax, cx			; return position
-	inc	cx			; increment size of list
-	mov	[size],cx		; save new list size
+	movzx	rcx,WORD[size]
+	mov	rax, rcx			; return position
+	inc	rcx			; increment size of list
+	mov	WORD[size],cx		; save new list size
 
  	mov     rsp,rbp
 	pop     rbp
@@ -257,7 +257,7 @@ list_get:
 	mov	rax,0
 
 	;----- sanity checks -----
-	mov	rcx,[size]
+	movzx	rcx,WORD[size]
 	cmp	rcx,0			; check if size is zero
 	jz	.list_get_end		; list has no entries
 	dec	rcx			; convert 1-counted value to 0-counted

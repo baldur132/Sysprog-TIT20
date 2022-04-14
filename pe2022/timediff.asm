@@ -26,15 +26,15 @@ extern  list_add
 extern  list_find
 extern  list_get
 
-; uint to ascii conversion
+; string functions
 extern	timevaltostring
+extern	createtimediff
 
 ;-----------------------------------------------------------------------------
 ; CONSTANTS
 ;-----------------------------------------------------------------------------
 
 %define	BUFFER_SIZE	80
-%define	ERRMSG_VALUES_LEN 48
 
 ;-----------------------------------------------------------------------------
 ; SECTION DATA
@@ -48,18 +48,30 @@ emsg_values:	db	"Fehler Bitte ueberpruefen Sie die Eingabewerte", 0xA
 emsg_empty:	db	"Keine Eingabewerte vorhanden", 0xA
 emsg_unsorted:	db	"Eingabewerte sind nicht sortiert", 0xA
 
-timestamp:	times	28	db	0
-timestring:	times	22	db	0
+
+; Max length of output:
+;
+; 20c seconds(2^64)    7c usec 1c  => 28
+; 18446744073709551616 .999999 \n
+;
+; 15c days        1c 5c    1c 8c time  7c usec 1c  =>  38
+; 213503982334601 \s days, \s 23:59:59 .999999 \n
+;
+; 7c sep  1c  => 8 (total: 74)
+; ======= \n
+timestamp:	times	74	db	0
 separator:	db	"=======", 0xA
+sep_len:	db	8
 
 ;-----------------------------------------------------------------------------
 ; SECTION BSS
 ;-----------------------------------------------------------------------------
 SECTION .bss
 
-spacer:		resb	6
-buffer:		resb	BUFFER_SIZE	; used to read and to print
+spacer:		resb    6
+buffer:		resb	BUFFER_SIZE	; used to read input
 timeval:	resq	2	; timeval to pass to list functions
+timeval_old:	resq	2	; timeval for comparisons
 seconds:	resb	20	; 2^64 results in a number with 20 digits
 useconds:	resb	6	; any usec value over 6 digits is invalid
 
@@ -104,7 +116,7 @@ ingest_data:
 	test	rdi,rdi
 	jz	error_values		; no flag set = no usecs read -> error
 	dec	rdi
-	mov	[usec_flag],rdi		; reset usec flag
+	mov	BYTE[usec_flag],dil	; reset usec flag
 	call	write_data_to_list	; end of entry, write to list
 	jmp	.ingest_data_end
 
@@ -112,7 +124,7 @@ ingest_data:
 	test	rdi,rdi
 	jnz	error_values		; flag set = other dot read -> error
 	inc	rdi
-	mov	[usec_flag],rdi		; set usec flag
+	mov	BYTE[usec_flag],dil	; set usec flag
 	jmp	.ingest_data_end
 
 .number:
@@ -135,7 +147,7 @@ ingest_data:
 	ja	error_values		; we have read more than 20 sec digits
 	mov	[seconds + rdx],rsi	; write seconds
 	inc	rdx
-	mov	[sec_i],dl		; increment sec list iterator
+	mov	BYTE[sec_i],dl		; increment sec list iterator
 	jmp	.ingest_data_end
 
 .ingest_data_end:
@@ -239,7 +251,7 @@ print_timestamps:
 .print_loop:
 	; 
 	cmp	r11,r12			; iterator test
-	jae	.print_end		; exit print
+	je	.print_end		; exit print
 
 	; get timeval from list
 	mov	rdi,timeval
@@ -248,10 +260,52 @@ print_timestamps:
 
 	; convert timeval to string
 	mov	rax,0
+	movzx	rcx,BYTE[sec_i]
 	mov	rdi,timestamp
 	mov	rsi,timeval
 	call	timevaltostring
 
+	; calculate time difference
+	test	r11,r11			; don't do math on the first timestamp
+	jz	.offset_separator
+	
+	mov	r10,rax			; save return value, it gets clobbered
+	mov	rdi,timeval_old
+	mov	rsi,r11
+	dec	rsi
+	call	list_get		; get previous timeval
+
+	mov	rdi,timestamp
+	add	rdi,r10
+	mov	rsi,timeval_old
+	mov	rdx,timeval
+	call	createtimediff
+
+	add	rdi,rax			; increment write pointer
+	add	rax,r10			; calculate new length
+	jmp	.insert_separator
+
+.offset_separator:
+	add	rdi,8
+
+.insert_separator:
+	mov	rcx,r11
+	inc	rcx
+	cmp	rcx,r12			; don't print a separator on the last entry
+	je	.print
+
+	movzx	rcx,BYTE[sep_len]
+
+.sep_loop:
+	dec	rcx
+	mov	rdx,[separator+rcx]
+	mov	[rdi+rcx],rdx
+	inc	rax
+	test	rcx,rcx
+	jz	.print
+	jmp	.sep_loop
+
+.print:
 	; print timestamp
 	push	r11
 	SYSCALL_4 SYS_WRITE, FD_STDOUT, timestamp, rax
