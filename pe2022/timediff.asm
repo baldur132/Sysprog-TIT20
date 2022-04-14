@@ -26,15 +26,15 @@ extern  list_add
 extern  list_find
 extern  list_get
 
-; uint to ascii conversion
+; string functions
 extern	timevaltostring
+extern	createtimediff
 
 ;-----------------------------------------------------------------------------
 ; CONSTANTS
 ;-----------------------------------------------------------------------------
 
 %define	BUFFER_SIZE	80
-%define	ERRMSG_VALUES_LEN 48
 
 ;-----------------------------------------------------------------------------
 ; SECTION DATA
@@ -48,8 +48,18 @@ emsg_values:	db	"Fehler Bitte ueberpruefen Sie die Eingabewerte", 0xA
 emsg_empty:	db	"Keine Eingabewerte vorhanden", 0xA
 emsg_unsorted:	db	"Eingabewerte sind nicht sortiert", 0xA
 
-timestamp:	times	28	db	0
-timestring:	times	22	db	0
+
+; Max length of output:
+;
+; 20c seconds(2^64)    7c usec 1c  => 28
+; 18446744073709551616 .999999 \n
+;
+; 15c days        1c 5c    1c 8c time  7c usec 1c  =>  38
+; 213503982334601 \s days, \s 23:59:59 .999999 \n
+;
+; 7c sep  1c  => 8 (total: 74)
+; ======= \n
+timestamp:	times	74	db	0
 separator:	db	"=======", 0xA
 
 ;-----------------------------------------------------------------------------
@@ -58,7 +68,7 @@ separator:	db	"=======", 0xA
 SECTION .bss
 
 spacer:		resb	6
-buffer:		resb	BUFFER_SIZE	; used to read and to print
+buffer:		resb	BUFFER_SIZE	; used to read input
 timeval:	resq	2	; timeval to pass to list functions
 seconds:	resb	20	; 2^64 results in a number with 20 digits
 useconds:	resb	6	; any usec value over 6 digits is invalid
@@ -251,6 +261,9 @@ print_timestamps:
 	mov	rdi,timestamp
 	mov	rsi,timeval
 	call	timevaltostring
+
+	; calculate time difference
+
 
 	; print timestamp
 	push	r11
