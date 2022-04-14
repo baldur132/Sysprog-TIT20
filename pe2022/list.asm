@@ -117,12 +117,17 @@ list_add:
 
 	;----- check if list is sorted -----
 	cmp	rcx, 0
-	je	.list_add_end		; skip checking if this is first entry
+	je	.set_list_sorted	; skip checking if this is first entry
 	cmp	[list + rcx - 16],r8	; compare previous sec to current sec
 	ja	.set_list_unsorted	; last sec > current sec -> not sorted
+	je	.usec_comp	
+	jmp	.set_list_sorted
+
+.usec_comp:
 	cmp	[list + rcx - 8],r9	; compare previous usec to cur usec
 	ja	.set_list_unsorted	; last usec > cur usec -> not sorted
-	
+
+.set_list_sorted:
 	mov	rdx,1			; list is sorted
 	mov	BYTE[list_sorted],dl
 	jmp	.list_add_end

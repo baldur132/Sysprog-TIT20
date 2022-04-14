@@ -188,7 +188,7 @@ daystostring:
         ; decide whether there is more than 1 day
         cmp   rax,1
         jne   .insert_label
-        mov   rdx,[rdi]
+        movzx rdx,BYTE[rdi]
         cmp   rdx,49    ; "1" was printed, days is singular
         je    .insert_label_singular
 
@@ -209,9 +209,11 @@ daystostring:
         lea   rbx,[rdi + rax]
         add   rax,rcx
 .label_loop_singlular:
+        dec   rcx
         movzx rdx,BYTE[day_sep + rcx]
         mov   BYTE[rbx + rcx],dl
-        loop  .label_loop
+        test  rcx,rcx
+        jnz   .label_loop_singlular
         jmp   .end_days
 
 .end_days:
