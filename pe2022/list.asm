@@ -29,6 +29,7 @@ list_sorted:	db	0	; bool for if the list is sorted or not
 ;-----------------------------------------------------------------------------
 SECTION .bss
 
+spacer:		resq	1
 list:		resq	262144	; memory allocation for list
 
 ; List memory layout
@@ -113,7 +114,7 @@ list_add:
 	mov	r9,[rdi + 8]		; get useconds value
 	mov	[list + rcx],r8		; move seconds into the first part
 	mov	[list + rcx + 8],r9	; move useconds into the second part
-	
+
 	;----- check if list is sorted -----
 	cmp	rcx, 0
 	je	.list_add_end		; skip checking if this is first entry
@@ -199,10 +200,9 @@ list_find:
 
 	mov	rdx,0
 	mov	rax,0
-	mov	rcx,2
 	add	rax,r10
 	add	rax,r11
-	div	rcx			; calculate middle value
+	shr	rax, 1			; calculate middle value
 
 	; comparison stage 1, seconds
 	mov	rcx,16

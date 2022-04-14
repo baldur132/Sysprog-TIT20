@@ -26,6 +26,9 @@ extern  list_add
 extern  list_find
 extern  list_get
 
+; uint to ascii conversion
+extern	timevaltostring
+
 ;-----------------------------------------------------------------------------
 ; CONSTANTS
 ;-----------------------------------------------------------------------------
@@ -42,14 +45,22 @@ sec_i:		db	0	; number of digits in seconds
 usec_i:		db	0	; tracks byte offset in usec
 usec_flag:	db	0	; decides whether to write into sec or usec
 errmsg_values:	db	"Fehler- Bitte ueberpruefen Sie die Eingabewerte", 0xA
-msg:		db	"read timestamp", 0xA
+errmsg_empty:	db	"Fehler- Keine Eingabewerte Vorhanden", 0xA
+msg:		db	"read", 0xA
+msg_len:	dd	0	; number of characters to print
+
+timestamp:	times	28	db	0
+timestring:	times	22	db	0
+separator:	db	"=======", 0xA
 
 ;-----------------------------------------------------------------------------
 ; SECTION BSS
 ;-----------------------------------------------------------------------------
 SECTION .bss
 
-buffer:		resb	BUFFER_SIZE
+spacer:		resb	6
+buffer:		resb	BUFFER_SIZE	; used to read and to print
+timeval:	resq	2	; timeval to pass to list functions
 seconds:	resb	20	; 2^64 results in a number with 20 digits
 useconds:	resb	6	; any usec value over 6 digits is invalid
 
@@ -63,11 +74,11 @@ SECTION .text
         ;-----------------------------------------------------------
         global _start:function  ; make label available to linker
 _start:
-        nop
+	
 
 read_stdin:
 	; Read STDIN into buffer
-	SYSCALL_4 	SYS_READ, FD_STDIN, buffer, BUFFER_SIZE
+	SYSCALL_4 SYS_READ, FD_STDIN, buffer, BUFFER_SIZE
 	test 	rax,rax
 	jz	read_finished		; no more characters to be read
 
@@ -142,14 +153,19 @@ write_data_to_list:
 	;                 5*100000 + 2*10000 + 3*1000 + 4*100 + 8*10 + 1*1
 	; => seconds[i] * 10^(sec_i - i)
 
+	push	rax
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, msg, 5
+	pop	rax
+
 	push	rax			; save rax as we clobber it later
+	push	r8
 
 	movzx	rcx,BYTE[sec_i]		; set length of seconds as iterator
-	dec	rcx
 	mov	r9,0			; forward iterator
 	mov	r10,0			; clear total seconds register
 	mov	r11,0			; clear total useconds register
 .loop_sec:
+	dec	rcx
 	mov	edi,10			; set base
 	mov	esi,ecx			; set exponent
 	call	ipown			; get 10^sec_i into rax
@@ -157,33 +173,44 @@ write_data_to_list:
 	mul	rdx			; calc seconds[i] * 10^sec_i
 	add	r10,rax			; add result to total
 	inc	r9
-	loop	.loop_sec		; loop until all digits are read
+	test	rcx,rcx	
+	jnz	.loop_sec		; allow 0th iteration
 
-	mov	rcx,5			; set iterator for usec
+	mov	rcx,6			; set iterator for usec
 	mov	r9,0
 .loop_usec:
+	dec	rcx
 	mov	edi,10			; set base
 	mov	esi,ecx			; set exponent
 	call	ipown			; get 10^rcx into rax
 	movzx	rdx,BYTE[useconds + r9]	; 
 	mul	rdx			; calc useconds[i] * 10^rcx
 	add	r11,rax			; add result to total
-	mov	BYTE[useconds + rcx],0	; clear number in buffer
+	mov	BYTE[useconds + r9],0	; clear number in buffer
 	inc	r9
-	loop	.loop_usec
+	test	rcx,rcx
+	jnz	.loop_usec		; allow 0th iteration
 
-	pop	rax
+	;----- write seconds and useconds to list -----
+	mov	[timeval],r10		; write seconds to mem
+	mov	[timeval + 8],r11	; write useconds to mem
+	mov	rdi,timeval		; write pointer to param 1
+	call	list_add		; clobbers 
 
 	; clear buffer iterators
 	mov	BYTE[sec_i],0
 	mov	BYTE[usec_i],0
+
+	pop	r8
+	pop	rax
 	ret
 
-;; This power function is naive but it works.
-; rsi: base	rdi: exponent
-; returns in rax
-; clobbers: rax, rdi, rsi
+
 ipown:
+	; This power function is naive but it works.
+	; rsi: base	rdi: exponent
+	; returns in rax
+	; clobbers: rax, rdi, rsi
 	mov	rax,1
 	test	rsi,rsi
 	jz	.zero_exponent
@@ -203,13 +230,55 @@ ipown:
 read_finished:
 	nop
 
+print_timestamps:
+	push	r12
+	call	list_size		; get number of timestamps to print
+	mov	r12,rax
+	mov	r11,0			; iterator
+	test	r12,r12
+	jz	error_empty
+.print_loop:
+	; 
+	cmp	r11,r12			; iterator test
+	jae	.print_end		; exit print
+
+	; get timeval from list
+	mov	rdi,timeval
+	mov	rsi,r11
+	call	list_get
+
+	; convert timeval to string
+	mov	rax,0
+	mov	rdi,timestamp
+	mov	rsi,timeval
+	call	timevaltostring
+
+	; print timestamp
+	push	r11
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, timestamp, rax
+	pop	r11
+
+.print_loop_end:
+	inc	r11
+	jmp	.print_loop
+
+.print_end:
+	pop	r12
+
 exit:
 	; call system exit and return to operating system / shell
 	SYSCALL_2 SYS_EXIT, 0
 
+error_empty:
+	; write error message
+	SYSCALL_4 SYS_WRITE, FD_STDOUT, errmsg_empty, 37
+	jmp	exit_failure
+
 error_values:
 	; write error message
 	SYSCALL_4 SYS_WRITE, FD_STDOUT, errmsg_values, 48
+
+exit_failure:
 	; call system failure
 	SYSCALL_2 SYS_EXIT, 1
 ;-----------------------------------------------------------------------------
