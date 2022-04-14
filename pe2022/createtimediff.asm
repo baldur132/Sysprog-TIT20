@@ -81,6 +81,7 @@ createtimediff:
         cmp   rcx,r8        ; compare old usecs
         jae   .substract_normal
         ; current < old, we have to adjust seconds
+        sub   r8,rcx
         mov   rcx,1000000
         sub   rcx,r8
         mov   [usecs_adj],rcx
@@ -278,8 +279,9 @@ usecondstostring:
 .pad:
         test  rcx,rcx
         jz    .end_usecs
+        dec   rcx
         mov   BYTE[usec_str+rcx],'0'
-        loop  .pad
+        jmp   .pad
 .end_usecs:
         mov   rax,r8
         ret
