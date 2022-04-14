@@ -207,7 +207,7 @@ write_data_to_list:
 	;----- check that the list is sorted -----
 	call	list_is_sorted
 	test	rax,rax
-;	jz	error_unsorted
+	jz	error_unsorted
 
 	; clear buffer iterators
 	mov	BYTE[sec_i],0
