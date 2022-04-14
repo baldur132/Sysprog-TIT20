@@ -51,8 +51,8 @@ timevaltostring:
         call  usecondstostring
 
         ; insert seconds useconds separator
-        add   r8,6
-        mov   BYTE[rdi + 6],0xA
+        add   r8,7
+        mov   BYTE[rdi + 7],0xA
         mov   rax,r8
 
         jmp   func_end
@@ -109,7 +109,7 @@ secondstostring:
         ret
 
 usecondstostring:
-        mov   rcx,5     ; loop counter
+        mov   rcx,6     ; loop counter
         mov   rbx,10    ; divisor
         test  rax,rax
         jnz   .loop
@@ -120,15 +120,13 @@ usecondstostring:
         xor   rdx,rdx   ; clear rdx
         div   rbx
         add   dl,'0'    ; bring into ascii number space
-        mov   [rdi+rcx],dl
+        mov   BYTE[rdi+rcx],dl
         loop  .loop
-
 .pad:
         test  rcx,rcx
         jz    .end
         mov   BYTE[rdi+rcx],'0'
         loop  .pad
-
 .end:
         ret
 
