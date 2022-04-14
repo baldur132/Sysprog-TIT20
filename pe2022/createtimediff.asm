@@ -40,7 +40,7 @@ SECTION .data
 secs:       db  0
 mins:       db  0
 hours:      db  0
-usecs_adj:  db  0
+usecs_adj:  dq  0
 days_sep:   db  " days, "
 days_len:   db  7
 day_sep:    db  " day, "
@@ -104,7 +104,7 @@ createtimediff:
 
 .subtract_hours:
         dec   rcx
-        mov   BYTE[mins],cl
+        mov   BYTE[hours],cl
         jmp   .tostring
 
 .subtract_mins:
@@ -119,8 +119,8 @@ createtimediff:
 
 .substract_normal:
         ; current >= old, we can subtract normally
-        sub   rax,[rsi + 8]
-        mov   [usecs_adj],rax
+        sub   rcx,r8
+        mov   [usecs_adj],rcx
 
 .tostring:
         call  daystostring
@@ -135,6 +135,7 @@ createtimediff:
         inc   rax
 
         jmp   func_end
+
 
 daystostring:
         mov   rcx,0   ; loop counter
@@ -188,7 +189,7 @@ daystostring:
         cmp   rax,1
         jne   .insert_label
         mov   rdx,[rdi]
-        cmp   rax,49    ; "1" was printed, days is singular
+        cmp   rdx,49    ; "1" was printed, days is singular
         je    .insert_label_singular
 
 .insert_label:
@@ -257,6 +258,7 @@ insert_time:
 
 usecondstostring:
         mov   r8,rax    ; save byte counter
+        mov   rax,[usecs_adj]
         mov   rcx,6     ; loop counter
         mov   rbx,10    ; divisor
         test  rax,rax
@@ -265,18 +267,19 @@ usecondstostring:
 .loop:
         test  rax,rax
         jz    .pad
+        dec   rcx
         xor   rdx,rdx   ; clear rdx
         div   rbx
         add   dl,'0'    ; bring into ascii number space
         mov   BYTE[usec_str+rcx],dl
-        loop  .loop
+        jmp  .loop
 .pad:
         test  rcx,rcx
         jz    .end_usecs
-        mov   BYTE[rdi+rcx],'0'
+        mov   BYTE[usec_str+rcx],'0'
         loop  .pad
 .end_usecs:
-        mov   r8,rax
+        mov   rax,r8
         ret
 
 export_time:
