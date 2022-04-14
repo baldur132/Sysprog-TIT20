@@ -91,7 +91,7 @@ read_stdin:
 	; Read STDIN into buffer
 	SYSCALL_4 SYS_READ, FD_STDIN, buffer, BUFFER_SIZE
 	test 	rax,rax
-	jz	read_finished		; no more characters to be read
+	jz	print_timestamps	; no more characters to be read
 
 	mov	r8,0			; clear iterator
 
@@ -205,8 +205,8 @@ write_data_to_list:
 	call	list_add		; clobbers
 
 	;----- check that the list is sorted -----
-;	call	list_is_sorted
-;	test	rax,rax
+	call	list_is_sorted
+	test	rax,rax
 ;	jz	error_unsorted
 
 	; clear buffer iterators
@@ -238,9 +238,6 @@ ipown:
 ;-----------------------------------------------------------------------------
 ; Calculating time difference and generating timestamps 
 ;-----------------------------------------------------------------------------
-read_finished:
-	nop
-
 print_timestamps:
 	push	r12
 	call	list_size		; get number of timestamps to print

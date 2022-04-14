@@ -19,8 +19,8 @@
 ;-----------------------------------------------------------------------------
 SECTION .data
 
-position:	dq	0	; tracks the bytes of memory offset
-size:		dw	0	; represents the size of the list in elements
+position:		dq	0	; tracks the bytes of memory offset
+size:			dw	0	; represents the size of the list in elements
 list_sorted:	db	0	; bool for if the list is sorted or not
 
 
